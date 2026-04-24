@@ -1,0 +1,12 @@
+<html><body>
+<h1>Pricing</h1>
+<button onclick="pay()">Subscribe ₹499</button>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+function pay(){
+ localStorage.setItem("paid","true");
+ alert("Demo Payment Success");
+ window.location="Earthwork.html";
+}
+</script>
+</body></html>
