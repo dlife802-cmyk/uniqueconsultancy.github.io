@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unique Consultancy | Professional Earthwork</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-dragdata@2.2.3/dist/chartjs-plugin-dragdata.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root { 
+            --primary: #00d2ff;
+            --secondary: #3a7bd5;
+            --dark: #0f172a;
+            --glass: rgba(255, 255, 255, 0.05);
+            --text: #f8fafc;
+            --sidebar-color: #1e293b;
+            --save: #27ae60; 
+            --purple: #8e44ad; 
+            --danger: #e74c3c; 
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            background: radial-gradient(circle at top right, #1e293b, #0f172a);
+            color: var(--text);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Navigation Menu - Matches index.html */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 8%;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--glass);
+        }
+        .logo { font-weight: 600; font-size: 1.5rem; color: var(--primary); }
+        .nav-links { list-style: none; display: flex; gap: 30px; }
+        .nav-links a { text-decoration: none; color: var(--text); font-size: 0.9rem; transition: 0.3s; }
+        .nav-links a:hover { color: var(--primary); }
+
+        /* Workspace Layout */
+        .workspace { display: flex; flex: 1; overflow: hidden; }
+
+        #sidebar { 
+            width: 320px; 
+            background: var(--sidebar-color); 
+            padding: 20px; 
+            overflow-y: auto; 
+            border-right: 1px solid var(--glass);
+        }
+        #main { flex: 1; padding: 20px; overflow-y: auto; }
+
+        .config-box { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--primary); }
+        label { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; margin-bottom: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); color: white; }
+        
+        .btn { width: 100%; padding: 12px; margin-bottom: 8px; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; color: white; transition: 0.3s; }
+        .btn-blue { background: linear-gradient(45deg, var(--primary), var(--secondary)); }
+        .btn-green { background: var(--save); }
+        .btn-purple { background: var(--purple); }
+        .btn-logout { background: transparent !important; border: 1px solid var(--danger); color: var(--danger); margin-top: 20px; }
+        .btn:hover { transform: translateY(-2px); opacity: 0.9; }
+
+        /* Chart & Tables */
+        #chart-wrapper { height: 400px; width: 100%; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--glass); border-radius: 15px; padding: 15px; margin-bottom: 15px; position: relative; }
+        .card { background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid var(--glass); margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; color: #cbd5e1; }
+        th, td { border: 1px solid rgba(255,255,255,0.1); padding: 8px 4px; text-align: center; }
+        th { background: rgba(255,255,255,0.05); color: var(--primary); }
+        .total-row { background: rgba(0, 210, 255, 0.1); font-weight: bold; }
+        .datum-info { font-size: 14px; color: var(--primary); font-weight: bold; text-align: center; margin-bottom: 10px; }
+
+        /* Original Interactive Overlays */
+        #loginOverlay, #welcomeOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; z-index: 10000; }
+        #loginOverlay { background: var(--dark); }
+        #welcomeOverlay { background: rgba(15, 23, 42, 0.98); display: none; }
+        
+        .login-box, .welcome-box { background: #1e293b; padding: 40px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid var(--glass); box-shadow: 0 15px 35px rgba(0,0,0,0.5); }
+        .welcome-box { color: var(--text); }
+        
+        .btn-login, .btn-ok { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-ok { background: var(--save); margin-top: 20px; }
+
+        #loader { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.95); z-index:9999; flex-direction:column; align-items:center; justify-content:center; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay">
+    <div class="login-box">
+        <h2 style="color:var(--primary); margin-bottom:10px;">Unique Consultancy</h2>
+        <p style="color:#94a3b8; font-size: 14px; margin-bottom: 20px;">Please login to continue</p>
+        <input type="text" id="uID" placeholder="User ID">
+        <input type="password" id="uPass" placeholder="Password">
+        <button class="btn-login" id="loginBtn" onclick="validateLogin()">Login</button>
+        <p id="loginError" style="color:var(--danger); display:none; margin-top:10px; font-weight: bold;">Invalid Credentials</p>
+    </div>
+</div>
+
+<div id="welcomeOverlay">
+    <div class="welcome-box">
+        <h2 style="margin: 0 0 10px 0;">Welcome To Unique Consultancy</h2>
+        <h3 id="welcomeUserName" style="color: var(--primary); margin: 0 0 20px 0;"></h3>
+        <p style="font-size: 14px; line-height: 1.5;">You have successfully logged into the <strong>Unique Consultancy</strong> Earthwork System.</p>
+        <button class="btn-ok" onclick="closeWelcome()">OK - Get Started</button>
+    </div>
+</div>
+
+<div id="loader">
+    <div class="spinner"></div>
+    <h2 id="loadStatus">Generating Reports...</h2>
+</div>
+
+<nav>
+    <div class="logo">Unique Consultancy</div>
+    <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="Earthwork.html">Earthwork</a></li>
+        <li><a href="Services.html">Services</a></li>
+        <li><a href="Contact_Us.html">Contact Us</a></li>
+    </ul>
+</nav>
+
+<div class="workspace">
+    <div id="sidebar">
+        <div class="config-box">
+            <label>Layer 1 (OGL)</label>
+            <input type="text" id="l1Name" value="OGL">
+            <input type="file" id="f1" accept=".csv">
+        </div>
+        <div class="config-box">
+            <label>Layer 2 (PGL)</label>
+            <input type="text" id="l2Name" value="PGL">
+            <input type="file" id="f2" accept=".csv">
+        </div>
+        
+        <label>Current Chainage</label>
+        <select id="chSelect" onchange="runAnalysis()"></select>
+        
+        <button class="btn btn-blue" onclick="toggleVolume()">Generate Volume</button>
+        <button class="btn btn-purple" onclick="exportCSAndAreaPDF()">Export X-section</button>
+        <button class="btn btn-green" onclick="exportFinalExcel()">Export All Report</button>
+        
+        <button class="btn btn-logout" onclick="location.reload()">Logout</button>
+    </div>
+
+    <div id="main">
+        <div id="datumLabel" class="datum-info">Datum: --</div>
+        <div id="chart-wrapper">
+            <canvas id="csChart"></canvas>
+        </div>
+
+        <div id="areaSection" class="card">
+            <h3 style="margin:0 0 15px 0; text-align:center; color:var(--primary);">Area Report</h3>
+            <table id="areaTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2">Sl</th><th rowspan="2">Dist</th><th rowspan="2" id="hL1">L1</th><th rowspan="2" id="hL2">L2</th>
+                        <th colspan="4" style="background:rgba(231, 76, 60, 0.1)">Cutting</th>
+                        <th colspan="4" style="background:rgba(39, 174, 96, 0.1)">Filling</th>
+                    </tr>
+                    <tr>
+                        <th>Depth</th><th>Avg</th><th>Width</th><th>Area</th>
+                        <th>Depth</th><th>Avg</th><th>Width</th><th>Area</th>
+                    </tr>
+                </thead>
+                <tbody id="areaBody"></tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="7" style="text-align:right">Total Cut Area:</td><td id="areaTotalCut">0.000</td>
+                        <td colspan="3" style="text-align:right">Total Fill Area:</td><td id="areaTotalFill">0.000</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div id="volumeSection" class="card hidden">
+            <h3 style="margin:0 0 15px 0; text-align:center; color:var(--primary);">Volume Report</h3>
+            <table id="volumeTable">
+                <thead>
+                    <tr>
+                        <th rowspan="2">SL</th><th rowspan="2">Chainage</th><th rowspan="2">Dist</th>
+                        <th colspan="3">Cutting</th><th colspan="3">Filling</th>
+                    </tr>
+                    <tr>
+                        <th>Area</th><th>Avg Area</th><th>Vol</th>
+                        <th>Area</th><th>Avg Area</th><th>Vol</th>
+                    </tr>
+                </thead>
+                <tbody id="volumeBody"></tbody>
+                <tfoot>
+                    <tr class="total-row">
+                        <td colspan="5" style="text-align:right">Total Cut:</td><td id="volTotalCut">0.000</td>
+                        <td colspan="2" style="text-align:right">Total Fill:</td><td id="volTotalFill">0.000</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// --- AUTHENTICATION ENGINE ---
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSWrGypsJv4jQQ1B0ju7AOp_-jUHsxLq7eeRC_wjXwp0tZW6ttU4VRMzT4GxF5ZgcP9NbEXN-gY2tkQ/pub?output=csv";
+
+async function validateLogin() {
+    const user = document.getElementById('uID').value.trim();
+    const pass = document.getElementById('uPass').value.trim();
+    const btn = document.getElementById('loginBtn');
+    const err = document.getElementById('loginError');
+
+    if(!user || !pass) return;
+    btn.innerText = "Connecting...";
+    err.style.display = 'none';
+
+    try {
+        const response = await fetch(SHEET_CSV_URL + "&cb=" + Date.now());
+        const data = await response.text();
+        const rows = data.split('\n').map(row => row.split(','));
+        const found = rows.find(cols => cols[0]?.trim() === user && cols[1]?.trim() === pass);
+        
+        if (found || (user === 'admin' && pass === 'DIPAKs@123')) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('welcomeUserName').innerText = user.toUpperCase();
+            document.getElementById('welcomeOverlay').style.display = 'flex';
+        } else {
+            err.style.display = 'block';
+            btn.innerText = "Login";
+        }
+    } catch (e) { 
+        alert("Authentication server unreachable."); 
+        btn.innerText = "Login"; 
+    }
+}
+
+function closeWelcome() {
+    document.getElementById('welcomeOverlay').style.display = 'none';
+}
+
+// --- CALCULATION & DATA ENGINE ---
+let data1 = {}, data2 = {}, myChart = null;
+
+async function loadCSV(file, store) {
+    return new Promise(res => {
+        Papa.parse(file, { dynamicTyping: true, skipEmptyLines: true, complete: (r) => {
+            r.data.forEach(row => { if(row.length >= 3) {
+                const ch = row[0].toString();
+                if(!store[ch]) store[ch] = [];
+                store[ch].push({ x: parseFloat(row[1]), y: parseFloat(row[2]) });
+            }});
+            Object.keys(store).forEach(k => store[k].sort((a,b) => a.x - b.x));
+            res();
+        }});
+    });
+}
+
+document.getElementById('f1').onchange = async (e) => { await loadCSV(e.target.files[0], data1); sync(); };
+document.getElementById('f2').onchange = async (e) => { await loadCSV(e.target.files[0], data2); sync(); };
+
+function sync() {
+    const common = Object.keys(data1).filter(c => data2[c]).sort((a,b) => parseFloat(a)-parseFloat(b));
+    document.getElementById('chSelect').innerHTML = common.map(c => `<option value="${c}">${c}</option>`).join('');
+    if(common.length > 0) runAnalysis();
+}
+
+function getElev(x, pts) {
+    if (x < pts[0].x || x > pts[pts.length-1].x) return null;
+    for(let i=0; i<pts.length-1; i++) {
+        if(x >= pts[i].x && x <= pts[i+1].x) {
+            let t = (x - pts[i].x) / (pts[i+1].x - pts[i].x);
+            return pts[i].y + t * (pts[i+1].y - pts[i].y);
+        }
+    }
+    return null;
+}
+
+function runAnalysis() {
+    const ch = document.getElementById('chSelect').value;
+    if(!ch) return;
+    const l1 = data1[ch], l2 = data2[ch];
+    const n1 = document.getElementById('l1Name').value, n2 = document.getElementById('l2Name').value;
+    document.getElementById('hL1').innerText = n1; document.getElementById('hL2').innerText = n2;
+
+    const startX = Math.max(l1[0].x, l2[0].x), endX = Math.min(l1[l1.length-1].x, l2[l2.length-1].x);
+    let rawX = [...new Set([...l1.map(p=>p.x), ...l2.map(p=>p.x)])].filter(x => x>=startX && x<=endX).sort((a,b) => a-b);
+    
+    let allX = [];
+    for(let i=0; i<rawX.length-1; i++) {
+        let x1=rawX[i], x2=rawX[i+1];
+        let d1=getElev(x1, l1)-getElev(x1, l2), d2=getElev(x2, l1)-getElev(x2, l2);
+        allX.push(x1);
+        if((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) {
+            let intersectX = x1 + (x2 - x1) * (Math.abs(d1) / (Math.abs(d1) + Math.abs(d2)));
+            allX.push(intersectX);
+        }
+    }
+    allX.push(rawX[rawX.length-1]);
+    allX = [...new Set(allX)].sort((a,b) => a-b);
+
+    let sumC=0, sumF=0, tbody=document.getElementById('areaBody'), prev=null;
+    tbody.innerHTML = "";
+
+    allX.forEach((x, i) => {
+        const y1=getElev(x, l1), y2=getElev(x, l2);
+        const diff = y1 - y2;
+        const cur = { x, y1, y2, c: diff > 0.0001 ? diff : 0, f: diff < -0.0001 ? Math.abs(diff) : 0 };
+        
+        let row = `<td>${i+1}</td><td>${x.toFixed(3)}</td><td>${y1.toFixed(3)}</td><td>${y2.toFixed(3)}</td>`;
+        if(prev) {
+            const w = cur.x - prev.x, avgC = (cur.c+prev.c)/2, avgF = (cur.f+prev.f)/2, aC = avgC*w, aF = avgF*w;
+            sumC += aC; sumF += aF;
+            row += `<td>${cur.c.toFixed(3)}</td><td>${avgC.toFixed(4)}</td><td>${w.toFixed(3)}</td><td>${aC.toFixed(3)}</td>
+                    <td>${cur.f.toFixed(3)}</td><td>${avgF.toFixed(4)}</td><td>${w.toFixed(3)}</td><td>${aF.toFixed(3)}</td>`;
+        } else {
+            row += `<td>${cur.c.toFixed(3)}</td><td>0.0000</td><td>0.000</td><td>0.000</td><td>${cur.f.toFixed(3)}</td><td>0.0000</td><td>0.000</td><td>0.000</td>`;
+        }
+        tbody.innerHTML += `<tr>${row}</tr>`;
+        prev = cur;
+    });
+
+    document.getElementById('areaTotalCut').innerText = sumC.toFixed(3);
+    document.getElementById('areaTotalFill').innerText = sumF.toFixed(3);
+    const minVal = Math.min(...l1.map(p=>p.y), ...l2.map(p=>p.y));
+    const datum = Math.floor(minVal - 3);
+    document.getElementById('datumLabel').innerText = `Datum: ${datum.toFixed(3)} m`;
+    
+    setTimeout(() => drawChart(l1, l2, n1, n2, ch, datum), 50);
+}
+
+function drawChart(p1, p2, n1, n2, ch, datum) {
+    const ctx = document.getElementById('csChart').getContext('2d');
+    if(myChart) myChart.destroy();
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                { label: n1, data: p1, borderColor: '#27ae60', dragData: true, tension: 0, pointRadius: 6 },
+                { label: n2, data: p2, borderColor: '#e74c3c', borderDash: [5,5], dragData: true, tension: 0, pointRadius: 6 }
+            ]
+        },
+        options: {
+            animation: false, responsive: true, maintainAspectRatio: false,
+            plugins: { 
+                legend: { labels: { color: '#fff' } },
+                dragData: { round: 2, onDragEnd: (e,d,i,v) => { 
+                    if(d===0) data1[ch][i].y = v.y; else data2[ch][i].y = v.y; 
+                    runAnalysis(); 
+                }}
+            },
+            scales: { 
+                x:{type:'linear', grid:{color:'rgba(255,255,255,0.1)'}, ticks:{color:'#94a3b8'}}, 
+                y:{type:'linear', min:datum, grid:{color:'rgba(255,255,255,0.1)'}, ticks:{color:'#94a3b8'}} 
+            }
+        }
+    });
+}
+
+function toggleVolume() {
+    const common = Object.keys(data1).filter(c => data2[c]).sort((a,b) => parseFloat(a)-parseFloat(b));
+    const tbody = document.getElementById('volumeBody');
+    let tC=0, tF=0, prev=null;
+    tbody.innerHTML = "";
+    common.forEach((ch, i) => {
+        const la=data1[ch], lb=data2[ch];
+        const sX=Math.max(la[0].x, lb[0].x), eX=Math.min(la[la.length-1].x, lb[lb.length-1].x);
+        let rx=[...new Set([...la.map(p=>p.x), ...lb.map(p=>p.x)])].filter(x=>x>=sX && x<=eX).sort((a,b)=>a-b);
+        let ax=[];
+        for(let j=0; j<rx.length-1; j++){
+            let x1=rx[j], x2=rx[j+1], d1=getElev(x1,la)-getElev(x1,lb), d2=getElev(x2,la)-getElev(x2,lb);
+            ax.push(x1); if((d1>0 && d2<0)||(d1<0 && d2>0)) ax.push(x1+(x2-x1)*(Math.abs(d1)/(Math.abs(d1)+Math.abs(d2))));
+        }
+        ax.push(rx[rx.length-1]); ax=[...new Set(ax)].sort((a,b)=>a-b);
+        let aC=0, aF=0, p=null;
+        ax.forEach(x => {
+            const y1=getElev(x,la), y2=getElev(x,lb), cur={x, c:(y1-y2)>0?(y1-y2):0, f:(y2-y1)>0?(y2-y1):0};
+            if(p){ let w=cur.x-p.x; aC+=((cur.c+p.c)/2)*w; aF+=((cur.f+p.f)/2)*w; }
+            p=cur;
+        });
+        let d=0, avgC=0, vC=0, avgF=0, vF=0;
+        if(prev){ d=parseFloat(ch)-parseFloat(prev.ch); avgC=(aC+prev.aC)/2; vC=avgC*d; avgF=(aF+prev.aF)/2; vF=avgF*d; tC+=vC; tF+=vF; }
+        tbody.innerHTML += `<tr><td>${i+1}</td><td>${parseFloat(ch).toFixed(3)}</td><td>${d.toFixed(3)}</td><td>${aC.toFixed(3)}</td><td>${avgC.toFixed(3)}</td><td>${vC.toFixed(3)}</td><td>${aF.toFixed(3)}</td><td>${avgF.toFixed(3)}</td><td>${vF.toFixed(3)}</td></tr>`;
+        prev = { ch, aC, aF };
+    });
+    document.getElementById('volTotalCut').innerText = tC.toFixed(3);
+    document.getElementById('volTotalFill').innerText = tF.toFixed(3);
+    document.getElementById('volumeSection').classList.toggle('hidden');
+}
+
+// --- EXPORT ENGINE (Original Formatting Restored) ---
+async function exportCSAndAreaPDF() {
+    const { jsPDF } = window.jspdf;
+    const common = Object.keys(data1).filter(c => data2[c]).sort((a,b) => parseFloat(a)-parseFloat(b));
+    if (!common.length) return;
+    
+    document.getElementById('loader').style.display = 'flex';
+    document.getElementById('loadStatus').innerText = "Generating X-Sections...";
+
+    const doc = new jsPDF('l', 'mm', 'a4'); // Original Landscape
+    for (let i = 0; i < common.length; i++) {
+        document.getElementById('chSelect').value = common[i];
+        runAnalysis();
+        await new Promise(r => setTimeout(r, 250)); // Sync chart render
+        
+        if (i > 0) doc.addPage();
+        doc.text(`CROSS SECTION - CH: ${parseFloat(common[i]).toFixed(2)}`, 148, 12, { align: 'center' });
+        doc.addImage(document.getElementById('csChart').toDataURL('image/png'), 'PNG', 10, 18, 277, 75); // Original Dimensions
+        doc.autoTable({ html: '#areaTable', startY: 100, theme: 'grid', styles: { fontSize: 7 } });
+    }
+    doc.save(`Unique_Earthwork_Report.pdf`);
+    document.getElementById('loader').style.display = 'none';
+}
+
+function exportFinalExcel() {
+    document.getElementById('loader').style.display = 'flex';
+    const wb = XLSX.utils.book_new();
+    const common = Object.keys(data1).filter(c => data2[c]).sort((a,b) => parseFloat(a)-parseFloat(b));
+    
+    toggleVolume();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('volumeTable')), "Volume_Summary");
+    
+    common.forEach(ch => {
+        document.getElementById('chSelect').value = ch;
+        runAnalysis();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(document.getElementById('areaTable')), `CH_${parseFloat(ch).toFixed(1)}`.substring(0,31));
+    });
+
+    const r1 = [["CH", "Offset", "Level"]];
+    Object.keys(data1).sort((a,b)=>parseFloat(a)-parseFloat(b)).forEach(ch => data1[ch].forEach(p => r1.push([ch, p.x, p.y])));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r1), "Raw_Layer1");
+
+    const r2 = [["CH", "Offset", "Level"]];
+    Object.keys(data2).sort((a,b)=>parseFloat(a)-parseFloat(b)).forEach(ch => data2[ch].forEach(p => r2.push([ch, p.x, p.y])));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r2), "Raw_Layer2");
+
+    XLSX.writeFile(wb, "Unique_Full_Project.xlsx");
+    document.getElementById('loader').style.display = 'none';
+    runAnalysis();
+}
+</script>
+</body>
+</html>
